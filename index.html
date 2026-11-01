@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rock Paper Scissors Tournament</title>
+<style>
+  :root{
+    --bg1:#0f0c29; --bg2:#302b63; --bg3:#24243e;
+    --glass:rgba(255,255,255,.08); --border:rgba(255,255,255,.18);
+    --text:#f4f4ff; --muted:#a9a9c9;
+    --p1:#38bdf8; --p2:#f472b6; --win:#4ade80; --lose:#f87171; --draw:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100vh; font-family:'Segoe UI',system-ui,sans-serif; color:var(--text);
+    background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+    background-size:200% 200%; animation:bg 15s ease infinite;
+    display:flex; justify-content:center; align-items:flex-start; padding:30px 16px;
+    overflow-x:hidden;
+  }
+  @keyframes bg{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+  .blob{position:fixed;border-radius:50%;filter:blur(90px);opacity:.35;z-index:0}
+  .blob.a{width:340px;height:340px;background:#6366f1;top:-80px;left:-80px}
+  .blob.b{width:380px;height:380px;background:#ec4899;bottom:-120px;right:-100px}
+  .app{position:relative;z-index:1;width:100%;max-width:720px}
+  h1{text-align:center;font-size:2.1rem;margin-bottom:6px;
+     background:linear-gradient(90deg,#38bdf8,#c084fc,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{text-align:center;color:var(--muted);margin-bottom:22px}
+  .card{background:var(--glass);border:1px solid var(--border);backdrop-filter:blur(16px);
+        border-radius:22px;padding:26px;box-shadow:0 20px 50px rgba(0,0,0,.35);margin-bottom:18px}
+  .hidden{display:none!important}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:14px 0 6px}
+  input[type=text],input[type=number]{
+    width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border);
+    background:rgba(0,0,0,.25);color:var(--text);font-size:1rem;outline:none;transition:.2s}
+  input:focus{border-color:#a78bfa;box-shadow:0 0 0 3px rgba(167,139,250,.25)}
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mode{padding:14px;border-radius:14px;border:1px solid var(--border);background:rgba(0,0,0,.2);
+        color:var(--text);cursor:pointer;font-size:1rem;transition:.2s}
+  .mode.active{background:linear-gradient(135deg,#6366f1,#a855f7);border-color:transparent;transform:scale(1.03)}
+  .btn{width:100%;margin-top:22px;padding:14px;border:none;border-radius:14px;font-size:1.05rem;font-weight:600;
+       color:#fff;cursor:pointer;background:linear-gradient(135deg,#6366f1,#ec4899);transition:.2s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 10px 25px rgba(236,72,153,.35)}
+  .error{color:var(--lose);font-size:.9rem;margin-top:12px;min-height:1.2em;text-align:center}
+
+  .scoreboard{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .pl{flex:1;text-align:center}
+  .pl .name{font-weight:600;font-size:1.05rem}
+  .pl .score{font-size:2.8rem;font-weight:800;transition:transform .3s}
+  .pl.p1 .score{color:var(--p1)} .pl.p2 .score{color:var(--p2)}
+  .pop{transform:scale(1.35)}
+  .mid{text-align:center;color:var(--muted);font-size:.9rem}
+  .mid b{display:block;font-size:1.3rem;color:var(--text)}
+  .progress{height:8px;border-radius:99px;background:rgba(255,255,255,.1);margin-top:18px;overflow:hidden}
+  .progress div{height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#c084fc,#f472b6);transition:width .5s}
+
+  .prompt{text-align:center;font-size:1.15rem;margin-bottom:18px}
+  .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .choice{padding:22px 8px;border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.06);
+          color:var(--text);cursor:pointer;transition:.2s;font-size:.95rem}
+  .choice span{display:block;font-size:3rem;margin-bottom:6px}
+  .choice:hover{transform:translateY(-6px) rotate(-2deg);background:rgba(255,255,255,.14);box-shadow:0 12px 25px rgba(0,0,0,.35)}
+  .choice:disabled{opacity:.4;pointer-events:none}
+
+  .arena{display:flex;justify-content:space-around;align-items:center;margin-top:22px;min-height:110px}
+  .hand{font-size:4.5rem;animation:drop .5s ease}
+  .vs{color:var(--muted);font-weight:700}
+  @keyframes drop{from{transform:translateY(-30px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+  .shake{animation:shake .6s ease infinite}
+  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-18deg)}75%{transform:rotate(18deg)}}
+  .result{text-align:center;font-size:1.3rem;font-weight:700;margin-top:10px;min-height:1.6em}
+  .result.win{color:var(--win)} .result.lose{color:var(--lose)} .result.draw{color:var(--draw)}
+
+  .history h3{margin-bottom:12px;font-size:1rem;color:var(--muted)}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;
+       background:rgba(0,0,0,.2);margin-bottom:8px;font-size:.92rem;animation:drop .4s ease}
+  .tag{padding:3px 10px;border-radius:99px;font-size:.78rem;font-weight:600;color:#111}
+  .tag.p1{background:var(--p1)} .tag.p2{background:var(--p2)} .tag.draw{background:var(--draw)}
+
+  .final{text-align:center}
+  .trophy{font-size:5rem;animation:drop .8s ease}
+  .final h2{font-size:1.8rem;margin:8px 0}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+  .stat{background:rgba(0,0,0,.25);border-radius:14px;padding:12px}
+  .stat b{display:block;font-size:1.5rem}
+  .stat small{color:var(--muted)}
+  .confetti{position:fixed;top:-20px;font-size:1.6rem;z-index:5;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:.8}}
+  @media(max-width:480px){.choice span{font-size:2.3rem}.hand{font-size:3.4rem}.pl .score{font-size:2.2rem}}
+</style>
+</head>
+<body>
+<div class="blob a"></div><div class="blob b"></div>
+
+<div class="app">
+  <h1>✊ ✋ ✌️ RPS Tournament</h1>
+  <p class="sub">Rock • Paper • Scissors — may the best player win</p>
+
+  <!-- SETUP -->
+  <section id="setup" class="card">
+    <label>Game Mode</label>
+    <div class="modes">
+      <button class="mode active" data-mode="CPU">🤖 vs Computer</button>
+      <button class="mode" data-mode="PVP">👥 2 Players</button>
+    </div>
+    <label for="n1">Player 1 name</label>
+    <input type="text" id="n1" maxlength="14" placeholder="Player 1" />
+    <div id="n2wrap" class="hidden">
+      <label for="n2">Player 2 name</label>
+      <input type="text" id="n2" maxlength="14" placeholder="Player 2" />
+    </div>
+    <label for="rounds">Number of rounds (1 – 15)</label>
+    <input type="number" id="rounds" value="5" min="1" max="15" />
+    <div class="error" id="setupError"></div>
+    <button class="btn" id="startBtn">Start Tournament 🚀</button>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="hidden">
+    <div class="card">
+      <div class="scoreboard">
+        <div class="pl p1"><div class="name" id="name1"></div><div class="score" id="score1">0</div></div>
+        <div class="mid">Round<b id="roundLabel">1 / 5</b></div>
+        <div class="pl p2"><div class="name" id="name2"></div><div class="score" id="score2">0</div></div>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="prompt" id="prompt"></div>
+      <div class="choices" id="choices"></div>
+      <div class="arena">
+        <div class="hand" id="hand1">❔</div>
+        <div class="vs">VS</div>
+        <div class="hand" id="hand2">❔</div>
+      </div>
+      <div class="result" id="result"></div>
+    </div>
+
+    <div class="card history">
+      <h3>📜 Round History</h3>
+      <div id="history"></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="card final hidden">
+    <div class="trophy" id="trophy">🏆</div>
+    <h2 id="finalTitle"></h2>
+    <p id="finalScore" style="color:var(--muted)"></p>
+    <div class="stats">
+      <div class="stat"><b id="st1">0</b><small id="st1l"></small></div>
+      <div class="stat"><b id="stD">0</b><small>Draws</small></div>
+      <div class="stat"><b id="st2">0</b><small id="st2l"></small></div>
+    </div>
+    <button class="btn" id="againBtn">Play Again 🔁</button>
+  </section>
+</div>
+
+<script>
+/* ===================== ENUMS ===================== */
+const Move = Object.freeze({
+  ROCK:     { id: 'ROCK',     emoji: '✊', label: 'Rock',     beats: 'SCISSORS' },
+  PAPER:    { id: 'PAPER',    emoji: '✋', label: 'Paper',    beats: 'ROCK' },
+  SCISSORS: { id: 'SCISSORS', emoji: '✌️', label: 'Scissors', beats: 'PAPER' }
+});
+const Outcome = Object.freeze({ P1_WIN: 'P1_WIN', P2_WIN: 'P2_WIN', DRAW: 'DRAW' });
+const Mode    = Object.freeze({ CPU: 'CPU', PVP: 'PVP' });
+
+/* ===================== CLASSES ===================== */
+class Player {
+  constructor(name, isComputer = false) {
+    this.name = name;
+    this.isComputer = isComputer;
+    this.score = 0;
+  }
+  // Random number picks the computer's move
+  randomMove() {
+    const moves = Object.values(Move);
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+}
+
+class Round {
+  constructor(number, move1, move2) {
+    this.number = number;
+    this.move1 = move1;
+    this.move2 = move2;
+    this.outcome = Round.decide(move1, move2);
+  }
+  static decide(m1, m2) {
+    if (m1.id === m2.id) return Outcome.DRAW;
+    return m1.beats === m2.id ? Outcome.P1_WIN : Outcome.P2_WIN;
+  }
+}
+
+class Tournament {
+  constructor(p1, p2, totalRounds) {
+    this.p1 = p1;
+    this.p2 = p2;
+    this.totalRounds = totalRounds;
+    this.rounds = [];
+  }
+  get current() { return this.rounds.length + 1; }
+  get isOver()  { return this.rounds.length >= this.totalRounds; }
+  play(move1, move2) {
+    const round = new Round(this.current, move1, move2);
+    this.rounds.push(round);
+    if (round.outcome === Outcome.P1_WIN) this.p1.score++;
+    if (round.outcome === Outcome.P2_WIN) this.p2.score++;
+    return round;
+  }
+  get draws() { return this.rounds.filter(r => r.outcome === Outcome.DRAW).length; }
+  get winner() {
+    if (this.p1.score > this.p2.score) return this.p1;
+    if (this.p2.score > this.p1.score) return this.p2;
+    return null;
+  }
+}
+
+/* ===================== UI CONTROLLER ===================== */
+class App {
+  constructor() {
+    this.mode = Mode.CPU;
+    this.tournament = null;
+    this.pendingMove = null;   // PvP: player 1's hidden pick
+    this.locked = false;
+    this.$ = id => document.getElementById(id);
+    this.bind();
+    this.buildChoices();
+  }
+
+  bind() {
+    document.querySelectorAll('.mode').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.mode = btn.dataset.mode;
+        this.$('n2wrap').classList.toggle('hidden', this.mode === Mode.CPU);
+      });
+    });
+    this.$('startBtn').addEventListener('click', () => this.start());
+    this.$('againBtn').addEventListener('click', () => this.reset());
+  }
+
+  buildChoices() {
+    const box = this.$('choices');
+    for (const m of Object.values(Move)) {          // loop over enum
+      const b = document.createElement('button');
+      b.className = 'choice';
+      b.innerHTML = `<span>${m.emoji}</span>${m.label}`;
+      b.addEventListener('click', () => this.choose(m));
+      box.appendChild(b);
+    }
+  }
+
+  /* ---------- validation + start ---------- */
+  start() {
+    const err = this.$('setupError');
+    const n1 = this.$('n1').value.trim() || 'Player 1';
+    let n2 = this.$('n2').value.trim() || 'Player 2';
+    const rounds = Number(this.$('rounds').value);
+
+    if (!Number.isInteger(rounds) || rounds < 1 || rounds > 15) {
+      err.textContent = '⚠️ Rounds must be a whole number between 1 and 15.'; return;
+    }
+    if (this.mode === Mode.PVP && n1.toLowerCase() === n2.toLowerCase()) {
+      err.textContent = '⚠️ Players must have different names.'; return;
+    }
+    err.textContent = '';
+
+    const p1 = new Player(n1);
+    const p2 = this.mode === Mode.CPU ? new Player('Computer 🤖', true) : new Player(n2);
+    this.tournament = new Tournament(p1, p2, rounds);
+    this.pendingMove = null;
+    this.locked = false;
+
+    this.$('name1').textContent = p1.name;
+    this.$('name2').textContent = p2.name;
+    this.$('history').innerHTML = '';
+    this.$('setup').classList.add('hidden');
+    this.$('results').classList.add('hidden');
+    this.$('game').classList.remove('hidden');
+    this.resetArena();
+    this.updateBoard();
+    this.updatePrompt();
+  }
+
+  updatePrompt() {
+    const t = this.tournament;
+    const who = this.pendingMove ? t.p2.name : t.p1.name;
+    this.$('prompt').innerHTML = this.mode === Mode.PVP
+      ? `<b>${who}</b>, choose your move${this.pendingMove ? ' (no peeking! 🙈)' : ''}`
+      : `<b>${t.p1.name}</b>, choose your move`;
+  }
+
+  /* ---------- gameplay ---------- */
+  choose(move) {
+    if (this.locked || this.tournament.isOver) return;
+    const t = this.tournament;
+
+    if (this.mode === Mode.PVP && !this.pendingMove) {
+      this.pendingMove = move;               // store P1's pick, hide it
+      this.resetArena();
+      this.$('hand1').textContent = '🔒';
+      this.updatePrompt();
+      return;
+    }
+
+    const m1 = this.mode === Mode.PVP ? this.pendingMove : move;
+    const m2 = this.mode === Mode.PVP ? move : t.p2.randomMove();
+    this.pendingMove = null;
+    this.locked = true;
+    this.setChoicesDisabled(true);
+
+    // shake animation, then reveal
+    const h1 = this.$('hand1'), h2 = this.$('hand2');
+    h1.textContent = h2.textContent = '✊';
+    h1.classList.add('shake'); h2.classList.add('shake');
+    this.$('result').textContent = '';
+
+    setTimeout(() => {
+      h1.classList.remove('shake'); h2.classList.remove('shake');
+      const round = t.play(m1, m2);
+      h1.textContent = m1.emoji; h2.textContent = m2.emoji;
+      this.showResult(round);
+      this.addHistory(round);
+      this.updateBoard();
+
+      setTimeout(() => {
+        this.locked = false;
+        this.setChoicesDisabled(false);
+        if (t.isOver) this.showFinal();
+        else { this.resetArena(); this.updatePrompt(); }
+      }, 1400);
+    }, 900);
+  }
+
+  showResult(round) {
+    const t = this.tournament, el = this.$('result');
+    el.className = 'result';
+    if (round.outcome === Outcome.DRAW) { el.textContent = "🤝 It's a draw!"; el.classList.add('draw'); }
+    else {
+      const winner = round.outcome === Outcome.P1_WIN ? t.p1 : t.p2;
+      el.textContent = `🎉 ${winner.name} wins the round!`;
+      el.classList.add(round.outcome === Outcome.P1_WIN || this.mode === Mode.PVP ? 'win' : 'lose');
+      const s = this.$(round.outcome === Outcome.P1_WIN ? 'score1' : 'score2');
+      s.classList.add('pop'); setTimeout(() => s.classList.remove('pop'), 300);
+    }
+  }
+
+  addHistory(round) {
+    const t = this.tournament;
+    let tag, text;
+    if (round.outcome === Outcome.DRAW) { tag = 'draw'; text = 'Draw'; }
+    else if (round.outcome === Outcome.P1_WIN) { tag = 'p1'; text = t.p1.name; }
+    else { tag = 'p2'; text = t.p2.name; }
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span>Round ${round.number}: ${round.move1.emoji} vs ${round.move2.emoji}</span>
+                     <span class="tag ${tag}">${text}</span>`;
+    this.$('history').prepend(row);
+  }
+
+  updateBoard() {
+    const t = this.tournament;
+    this.$('score1').textContent = t.p1.score;
+    this.$('score2').textContent = t.p2.score;
+    const shown = Math.min(t.current, t.totalRounds);
+    this.$('roundLabel').textContent = `${shown} / ${t.totalRounds}`;
+    this.$('bar').style.width = (t.rounds.length / t.totalRounds * 100) + '%';
+  }
+
+  resetArena() {
+    this.$('hand1').textContent = '❔';
+    this.$('hand2').textContent = '❔';
+    this.$('result').textContent = '';
+  }
+
+  setChoicesDisabled(v) {
+    document.querySelectorAll('.choice').forEach(b => b.disabled = v);
+  }
+
+  /* ---------- results ---------- */
+  showFinal() {
+    const t = this.tournament, w = t.winner;
+    this.$('game').classList.add('hidden');
+    this.$('results').classList.remove('hidden');
+    this.$('trophy').textContent = w ? '🏆' : '🤝';
+    this.$('finalTitle').textContent = w ? `${w.name} wins the tournament!` : "It's a tie!";
+    this.$('finalScore').textContent = `Final score: ${t.p1.name} ${t.p1.score} – ${t.p2.score} ${t.p2.name}`;
+    this.$('st1').textContent = t.p1.score;  this.$('st1l').textContent = t.p1.name + ' wins';
+    this.$('st2').textContent = t.p2.score;  this.$('st2l').textContent = t.p2.name + ' wins';
+    this.$('stD').textContent = t.draws;
+    if (w) this.confetti();
+  }
+
+  confetti() {
+    const icons = ['🎉', '✨', '🎊', '⭐', '🏆'];
+    for (let i = 0; i < 40; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.textContent = icons[Math.floor(Math.random() * icons.length)];
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.animationDuration = (2 + Math.random() * 3) + 's';
+      c.style.animationDelay = Math.random() * 1.2 + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 6500);
+    }
+  }
+
+  reset() {
+    this.$('results').classList.add('hidden');
+    this.$('game').classList.add('hidden');
+    this.$('setup').classList.remove('hidden');
+  }
+}
+
+new App();
+</script>
+</body>
+</html>
